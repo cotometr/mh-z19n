@@ -82,14 +82,40 @@ int Mhz19b::set_zero_point_calibration() {
 
     int res = send_request();
 
-    if (res != 0)
+    return res;
+}
+//TODO: add check FF
+int Mhz19b::set_span_point_calibration(int span_level) {
+    CLEAR_LOG();
+    ADD_TO_LOG("\n");
+
+    if(span_level < 1000 || span_level > 5000)
     {
-        ADD_TO_LOG("Failed to send command!\n");
+        ADD_TO_LOG("Invalid span level: " + span_level);
     }
+
+    //E.g.: SPAN is 2000ppm，HIGH = 2000 / 256；LOW = 2000 % 256
+    uint8_t high = highByte(span_level);
+    uint8_t low = lowByte(span_level);
+
+    set_buffer(COMMAND_CALIBRATE_SPAN, high, low);
+
+    int res = send_request();
 
     return res;
 }
 
+int Mhz19b::set_auto_calibrate(bool is_auto_calibrated) {
+    CLEAR_LOG();
+    ADD_TO_LOG(" is not implemented");
+    return -1;
+}
+
+int Mhz19b::set_range(int range) {
+    CLEAR_LOG();
+    ADD_TO_LOG(" is not implemented");
+    return -1;
+}
 
 unsigned char Mhz19b::get_crc(unsigned char *buff) {
 
@@ -185,20 +211,3 @@ void Mhz19b::clear_serial_cache() {
     while (stream.read() > 0);
 }
 
-int Mhz19b::set_span_point_calibration(int level) {
-    CLEAR_LOG();
-    ADD_TO_LOG(" is not implemented");
-    return -1;
-}
-
-int Mhz19b::set_auto_calibrate(bool is_auto_calibrated) {
-    CLEAR_LOG();
-    ADD_TO_LOG(" is not implemented");
-    return -1;
-}
-
-int Mhz19b::set_range(int range) {
-    CLEAR_LOG();
-    ADD_TO_LOG(" is not implemented");
-    return -1;
-}

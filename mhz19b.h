@@ -32,7 +32,7 @@ public:
      * @param level co2 level for calibration
      * @return 0 if everything is ok
      */
-    int set_span_point_calibration(int level);
+    int set_span_point_calibration(int span_level);
 
     /**
      * @details All Winsen sensor with ABC logic on before delivery if no special request.
