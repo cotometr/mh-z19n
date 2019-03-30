@@ -105,12 +105,16 @@ int Mhz19b::set_span_point_calibration(int span_level) {
 
 int Mhz19b::set_auto_calibrate(bool is_auto_calibrated) {
     CLEAR_LOG();
+    ADD_TO_LOG("turn to " + (is_auto_calibrated ? String("ON") : String("OFF")));
 
     uint8_t byte3 = is_auto_calibrated ? (uint8_t)0xA0 : (uint8_t)0;
 
     set_buffer(COMMAND_CALIBRATE_AUTO_ON_OFF, byte3);
 
-    return send_request();
+    int res = send_request();
+    delay(1000);
+
+    return res;
 }
 
 int Mhz19b::set_range(int range) {
