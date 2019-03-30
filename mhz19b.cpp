@@ -115,8 +115,18 @@ int Mhz19b::set_auto_calibrate(bool is_auto_calibrated) {
 
 int Mhz19b::set_range(int range) {
     CLEAR_LOG();
-    ADD_TO_LOG(" is not implemented");
-    return -1;
+
+    if (range != 2000 && range != 5000) {
+        ADD_TO_LOG("invalid range = " + String(range));
+        return -1;
+    }
+
+    uint8_t high = highByte(range);
+    uint8_t low = lowByte(range);
+
+    set_buffer(COMMAND_RANGE_SETTING, high, low);
+
+    return send_request();
 }
 
 unsigned char Mhz19b::get_crc(unsigned char *buff) {
