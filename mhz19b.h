@@ -62,6 +62,8 @@ private:
      */
     int send_request();
 
+    int recv_response();
+
     void set_buffer(uint8_t byte2, uint8_t byte3 = 0, uint8_t byte4 = 0);
 
     bool is_available();

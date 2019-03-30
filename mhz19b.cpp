@@ -9,22 +9,23 @@
 
 #ifdef MHZ19B_DEBUG_LOG
 
-#define CLEAR_LOG()                                         \
-do {                                                        \
-    if (this->is_log_used)                                  \
-    {                                                       \
-         this->last_log_str = "";                           \
-    }                                                       \
+#define CLEAR_LOG()                                             \
+do {                                                            \
+    if (this->is_log_used)                                      \
+    {                                                           \
+         this->last_log_str = String(__FUNCTION__)              \
+                              + " is called\n";                 \
+    }                                                           \
 }while(0)
 
-#define ADD_TO_LOG(value)                                   \
-do {                                                        \
-    if (this->is_log_used)                                  \
-    {                                                       \
-         this->last_log_str +=                              \
-                            String(__PRETTY_FUNCTION__)     \
-                            + (value);                      \
-    }                                                       \
+#define ADD_TO_LOG(value)                                       \
+do {                                                            \
+    if (this->is_log_used)                                      \
+    {                                                           \
+         this->last_log_str +=                                  \
+                            String(__FUNCTION__) + ":"          \
+                            + __LINE__ + " " + (value) + "\n";  \
+    }                                                           \
 }while(0)
 #else
 #define CLEAR_LOG()
@@ -44,39 +45,37 @@ int Mhz19b::get_co2_uart() {
     CLEAR_LOG();
 
     set_buffer(COMMAND_READ_CO2);
-    ADD_TO_LOG("Sending CO2 request...\n");
 
     int res = send_request();
     if (res != 0)
-    {
         return res;
-    }
 
+    res = recv_response();
+    if(res != 0)
+        return res;
+
+#ifdef MHZ19B_DEBUG_LOG
+    String responce;
     // print out the response in hexa
     for (int i = 0; i < 9; i++) {
-        ADD_TO_LOG(String((int)(unsigned char)buffer[i], HEX));
-        ADD_TO_LOG("   ");
+        responce += String((int)buffer[i], HEX) + "   ";
     }
-    ADD_TO_LOG("\n");
+    ADD_TO_LOG(responce);
+#endif
 
     // ppm
     int ppm_uart = 256 * (int)buffer[2] + (int)buffer[3];
-    ADD_TO_LOG("PPM UART: ");
-    ADD_TO_LOG(ppm_uart);
+    ADD_TO_LOG("PPM UART: " + String(ppm_uart));
 
     // temp
     int temp = (unsigned char)buffer[4] - 40;
-    ADD_TO_LOG("\nTemperature? ");
-    ADD_TO_LOG(temp);
-    ADD_TO_LOG("\n");
+    ADD_TO_LOG("Temperature? " + String(temp));
 
     return ppm_uart;
 }
 
 int Mhz19b::set_zero_point_calibration() {
     CLEAR_LOG();
-
-    ADD_TO_LOG("\n");
 
     set_buffer(COMMAND_CALIBRATE_ZERO);
 
@@ -87,7 +86,6 @@ int Mhz19b::set_zero_point_calibration() {
 //TODO: add check FF
 int Mhz19b::set_span_point_calibration(int span_level) {
     CLEAR_LOG();
-    ADD_TO_LOG("\n");
 
     if(span_level < 1000 || span_level > 5000)
     {
@@ -131,48 +129,56 @@ unsigned char Mhz19b::get_crc(unsigned char *buff) {
 
 int Mhz19b::send_request() {
 
-    size_t io_size;
-    io_size = stream.write(buffer, sizeof(buffer));//request PPM CO2
+    size_t write_size = stream.write(buffer, sizeof(buffer));//request PPM CO2
     stream.flush();
 
-    if (io_size != sizeof(buffer))
+    if (write_size != sizeof(buffer))
     {
         clear_serial_cache();
 
         int write_error = stream.getWriteError();
-        ADD_TO_LOG("Could not send the whole request. Only " + String(io_size) +
-                   " has been sent, write error = " + String(write_error) + "\n");
+        ADD_TO_LOG("Could not send the whole request. Only " + String(write_size) +
+                   " has been sent, write error = " + String(write_error));
         return -1;
     }
+
+    return 0;
+}
+
+int Mhz19b::recv_response()
+{
+    size_t response_size;
+    uint8_t recv_command = buffer[2];
 
     if(!is_available())
     {
         clear_serial_cache();
-        ADD_TO_LOG("The sensor doesn't response to receive data\n");
+        ADD_TO_LOG("The sensor doesn't response to receive data");
         return -1;
     }
 
-    if ((io_size = (size_t)stream.available()) != sizeof(buffer)){
+    if ((response_size = (size_t)stream.available()) != sizeof(buffer)){
         clear_serial_cache();
         ADD_TO_LOG("Available less memory than needed" +
-                   String(io_size) + io_size + "\n");
+                   String(response_size));
 
         return -1;
     }
 
-    size_t response_size = stream.readBytes((char*)buffer, sizeof(buffer));
+    response_size = stream.readBytes((char*)buffer, sizeof(buffer));
     if (response_size != sizeof(buffer)) {
-        ADD_TO_LOG("Could not receive the responce. read size = " + String(response_size) + ", error\n");
+        ADD_TO_LOG("Could not receive the responce. read size = " + String(response_size) + ", error");
         return -1;
     }
 
     unsigned char calculated_crc = get_crc(buffer);
     unsigned char received_crc = buffer[8];
 
-    if (calculated_crc != received_crc)
+    if (calculated_crc != received_crc || buffer[0] != 0xff || buffer[1] != recv_command )
     {
-        ADD_TO_LOG("Checksum not OK! Recv = " + String(received_crc) +
-                   " Should be " + String(calculated_crc) + "\n");
+        ADD_TO_LOG("ERROR recv, CRC=" + String(received_crc) +" Should be "
+                   + String(calculated_crc) + ", [0]=" + String((int)buffer[0], HEX) + ", [1]="
+                   + String((int)buffer[1], HEX) );
         return -1;
     }
 
