@@ -14,18 +14,18 @@ do {                                        \
 }while(0)
 
 #define INIT_DEBUG_LOCAL_LOG()              \
-    String #__FUNCTION__local;
+    String __FUNCTION__local;
 
 #define ADD_DEBUG_LOCAL_LOG(str)            \
 do {                                        \
     if (this->is_log_used)                  \
     {                                       \
-         #__FUNCTION__local += (str);       \
+         __FUNCTION__local += (str);       \
     }                                       \
 }while(0)
 
 #define GET_DEBUG_LOCAL_LOG() \
-    #__FUNCTION__local
+    __FUNCTION__local
 
 Mhz19b::Mhz19b(Stream &stream, bool log):stream(stream), is_log_used(log) {
     ADD_TO_LASR_LOG("Mhz19b inited!");
@@ -116,6 +116,8 @@ int Mhz19b::getCO2uart() {
 //    if (status == 0x40) {
 //        Serial.println("Status OK");
 //    }
+
+    ADD_TO_LASR_LOG(GET_DEBUG_LOCAL_LOG());
 
     return ppm_uart;
 }
