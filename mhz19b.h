@@ -1,9 +1,10 @@
 #pragma once
 
-//#include <Stream.h>
 class Stream;
 
 #include <WString.h>
+
+#define MHZ19B_DEBUG_LOG
 
 class Mhz19b
 {

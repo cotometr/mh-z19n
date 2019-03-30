@@ -7,21 +7,30 @@
 
 #define SENSOR_RETRY_COUNT (30)
 
-#define CLEAR_LOG()                         \
-do {                                        \
-    if (this->is_log_used)                  \
-    {                                       \
-         this->last_log_str = "";           \
-    }                                       \
+#ifdef MHZ19B_DEBUG_LOG
+
+#define CLEAR_LOG()                                         \
+do {                                                        \
+    if (this->is_log_used)                                  \
+    {                                                       \
+         this->last_log_str = "";                           \
+    }                                                       \
 }while(0)
 
-#define ADD_TO_LOG(value)                   \
-do {                                        \
-    if (this->is_log_used)                  \
-    {                                       \
-         this->last_log_str += (value);     \
-    }                                       \
+#define ADD_TO_LOG(value)                                   \
+do {                                                        \
+    if (this->is_log_used)                                  \
+    {                                                       \
+         this->last_log_str +=                              \
+                            String(__PRETTY_FUNCTION__)     \
+                            + (value);                      \
+    }                                                       \
 }while(0)
+#else
+#define CLEAR_LOG()
+#define ADD_TO_LOG(value)
+#endif
+
 
 Mhz19b::Mhz19b(Stream &stream, bool log):stream(stream), is_log_used(log) {
     ADD_TO_LOG("Mhz19b inited!");
@@ -64,6 +73,24 @@ int Mhz19b::get_co2_uart() {
     return ppm_uart;
 }
 
+int Mhz19b::set_zero_point_calibration() {
+    CLEAR_LOG();
+
+    ADD_TO_LOG("\n");
+
+    set_buffer(COMMAND_CALIBRATE_ZERO);
+
+    int res = send_request();
+
+    if (res != 0)
+    {
+        ADD_TO_LOG("Failed to send command!\n");
+    }
+
+    return res;
+}
+
+
 unsigned char Mhz19b::get_crc(unsigned char *buff) {
 
     unsigned char checksum = 0;
@@ -74,10 +101,6 @@ unsigned char Mhz19b::get_crc(unsigned char *buff) {
     checksum = (uint8_t)0xff - checksum;
     checksum += 1;
     return checksum;
-}
-
-int Mhz19b::set_zero_point_calibration() {
-    return 0;
 }
 
 int Mhz19b::send_request() {
@@ -91,7 +114,7 @@ int Mhz19b::send_request() {
         clear_serial_cache();
 
         int write_error = stream.getWriteError();
-        ADD_TO_LOG(String(__PRETTY_FUNCTION__) + "Could not send the whole request. Only " + String(io_size) +
+        ADD_TO_LOG("Could not send the whole request. Only " + String(io_size) +
                    " has been sent, write error = " + String(write_error) + "\n");
         return -1;
     }
@@ -99,7 +122,15 @@ int Mhz19b::send_request() {
     if(!is_available())
     {
         clear_serial_cache();
-        ADD_TO_LOG(String(__PRETTY_FUNCTION__) + "The sensor doesn't response to receive data\n");
+        ADD_TO_LOG("The sensor doesn't response to receive data\n");
+        return -1;
+    }
+
+    if ((io_size = (size_t)stream.available()) != sizeof(buffer)){
+        clear_serial_cache();
+        ADD_TO_LOG("Available less memory than needed" +
+                   String(io_size) + io_size + "\n");
+
         return -1;
     }
 
@@ -156,18 +187,18 @@ void Mhz19b::clear_serial_cache() {
 
 int Mhz19b::set_span_point_calibration(int level) {
     CLEAR_LOG();
-    ADD_TO_LOG(String(__PRETTY_FUNCTION__) + " is not implemented");
+    ADD_TO_LOG(" is not implemented");
     return -1;
 }
 
 int Mhz19b::set_auto_calibrate(bool is_auto_calibrated) {
     CLEAR_LOG();
-    ADD_TO_LOG(String(__PRETTY_FUNCTION__) + " is not implemented");
+    ADD_TO_LOG(" is not implemented");
     return -1;
 }
 
 int Mhz19b::set_range(int range) {
     CLEAR_LOG();
-    ADD_TO_LOG(String(__PRETTY_FUNCTION__) + " is not implemented");
+    ADD_TO_LOG(" is not implemented");
     return -1;
 }
