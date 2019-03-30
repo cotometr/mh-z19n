@@ -5,131 +5,169 @@
 #include <Arduino.h>
 #include "mhz19b.h"
 
-#define ADD_TO_LASR_LOG(str)                \
+#define SENSOR_RETRY_COUNT (30)
+
+#define CLEAR_LOG()                         \
 do {                                        \
     if (this->is_log_used)                  \
     {                                       \
-         this->last_log_str = (str);        \
+         this->last_log_str = "";           \
     }                                       \
 }while(0)
 
-#define INIT_DEBUG_LOCAL_LOG()              \
-    String __FUNCTION__local;
-
-#define ADD_DEBUG_LOCAL_LOG(str)            \
+#define ADD_TO_LOG(value)                   \
 do {                                        \
     if (this->is_log_used)                  \
     {                                       \
-         __FUNCTION__local += (str);       \
+         this->last_log_str += (value);     \
     }                                       \
 }while(0)
-
-#define GET_DEBUG_LOCAL_LOG() \
-    __FUNCTION__local
 
 Mhz19b::Mhz19b(Stream &stream, bool log):stream(stream), is_log_used(log) {
-    ADD_TO_LASR_LOG("Mhz19b inited!");
+    ADD_TO_LOG("Mhz19b inited!");
 }
 
 const String &Mhz19b::get_last_log() {
     return last_log_str;
 }
 
-int Mhz19b::getCO2uart() {
-    // send the CO2 data request
-    uint8_t cmd[9] = {0xFF,0x01,0x86,0x00,0x00,0x00,0x00,0x00,0x79};
-    char response[9]; // for answer
+int Mhz19b::get_co2_uart() {
+    CLEAR_LOG();
 
-    INIT_DEBUG_LOCAL_LOG();
+    set_buffer(COMMAND_READ_CO2);
+    ADD_TO_LOG("Sending CO2 request...\n");
 
-    ADD_DEBUG_LOCAL_LOG("Sending CO2 request...");
-
-    stream.write(cmd, 9);//request PPM CO2
-
-    // clear the buffer
-    memset(response, 0, 9);
-
-#define RETRY_COUNT (20)
-
-    int i = 0;
-    while (stream.available() == 0 && i < RETRY_COUNT ) {
-        delay(100);
-        i++;
-    }
-
-    if (i == RETRY_COUNT)
+    int res = send_request();
+    if (res != 0)
     {
-        String &log = GET_DEBUG_LOCAL_LOG();
-        ADD_TO_LASR_LOG(log + "\nStream is not available for " + String(RETRY_COUNT) + "times. error");
-        return -1;
-    }
-
-    size_t response_size = stream.readBytes(response, 9);
-    if (response_size != sizeof(response))
-    {
-        String &log = GET_DEBUG_LOCAL_LOG();
-        ADD_TO_LASR_LOG(log + "\nCould not read the sizeof(response), read = " + String(response_size) + ", error");
-        return -1;
+        return res;
     }
 
     // print out the response in hexa
-    for ( i = 0; i < 9; i++) {
-        ADD_DEBUG_LOCAL_LOG(String((int)(unsigned char)response[i], HEX));
-        ADD_DEBUG_LOCAL_LOG("   ");
+    for (int i = 0; i < 9; i++) {
+        ADD_TO_LOG(String((int)(unsigned char)buffer[i], HEX));
+        ADD_TO_LOG("   ");
     }
-    ADD_DEBUG_LOCAL_LOG("\n");
-
-//    for (int i = 0; i < 9; i++) {
-//        Serial.print(String((int)(unsigned char)response[i]));
-//        Serial.print("   ");
-//    }
-//    Serial.println("");
-
-    // checksum
-    unsigned char calculated_crc = get_crc(response);
-    unsigned char received_crc = (unsigned char)response[8];
-
-    if (calculated_crc != received_crc) {
-
-        ADD_DEBUG_LOCAL_LOG("Checksum not OK!");
-        ADD_DEBUG_LOCAL_LOG("Received: ");
-        ADD_DEBUG_LOCAL_LOG((int)(unsigned char)response[8]);
-        ADD_DEBUG_LOCAL_LOG("\nShould be: ");
-        ADD_DEBUG_LOCAL_LOG(calculated_crc);
-        ADD_DEBUG_LOCAL_LOG("\n");
-    }
+    ADD_TO_LOG("\n");
 
     // ppm
-    int ppm_uart = 256 * (int)response[2] + response[3];
-    ADD_DEBUG_LOCAL_LOG("PPM UART: ");
-    ADD_DEBUG_LOCAL_LOG(ppm_uart);
+    int ppm_uart = 256 * (int)buffer[2] + (int)buffer[3];
+    ADD_TO_LOG("PPM UART: ");
+    ADD_TO_LOG(ppm_uart);
 
     // temp
-    int temp = (unsigned char)response[4] - 40;
-    ADD_DEBUG_LOCAL_LOG("\nTemperature? ");
-    ADD_DEBUG_LOCAL_LOG(temp);
-
-    // status
-//    byte status = response[5];
-//    Serial.print("Status? ");
-//    Serial.println(status);
-//    if (status == 0x40) {
-//        Serial.println("Status OK");
-//    }
-
-    ADD_TO_LASR_LOG(GET_DEBUG_LOCAL_LOG());
+    int temp = (unsigned char)buffer[4] - 40;
+    ADD_TO_LOG("\nTemperature? ");
+    ADD_TO_LOG(temp);
+    ADD_TO_LOG("\n");
 
     return ppm_uart;
 }
 
-unsigned char Mhz19b::get_crc(char *buff) {
-    byte i;
+unsigned char Mhz19b::get_crc(unsigned char *buff) {
+
     unsigned char checksum = 0;
-    for (i = 1; i < 8; i++) {
-        checksum += (unsigned char)buff[i];
+    for (uint8_t i = 1; i < 8; i++) {
+        checksum += buff[i];
     }
 
-    checksum = 0xff - checksum;
+    checksum = (uint8_t)0xff - checksum;
     checksum += 1;
     return checksum;
+}
+
+int Mhz19b::set_zero_point_calibration() {
+    return 0;
+}
+
+int Mhz19b::send_request() {
+
+    size_t io_size;
+    io_size = stream.write(buffer, sizeof(buffer));//request PPM CO2
+    stream.flush();
+
+    if (io_size != sizeof(buffer))
+    {
+        clear_serial_cache();
+
+        int write_error = stream.getWriteError();
+        ADD_TO_LOG(String(__PRETTY_FUNCTION__) + "Could not send the whole request. Only " + String(io_size) +
+                   " has been sent, write error = " + String(write_error) + "\n");
+        return -1;
+    }
+
+    if(!is_available())
+    {
+        clear_serial_cache();
+        ADD_TO_LOG(String(__PRETTY_FUNCTION__) + "The sensor doesn't response to receive data\n");
+        return -1;
+    }
+
+    size_t response_size = stream.readBytes((char*)buffer, sizeof(buffer));
+    if (response_size != sizeof(buffer)) {
+        ADD_TO_LOG("Could not receive the responce. read size = " + String(response_size) + ", error\n");
+        return -1;
+    }
+
+    unsigned char calculated_crc = get_crc(buffer);
+    unsigned char received_crc = buffer[8];
+
+    if (calculated_crc != received_crc)
+    {
+        ADD_TO_LOG("Checksum not OK! Recv = " + String(received_crc) +
+                   " Should be " + String(calculated_crc) + "\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+void Mhz19b::set_buffer(uint8_t byte2, uint8_t byte3, uint8_t byte4) {
+    uint8_t cmd[9] = {0xFF,0x01,0x86,0x00,0x00,0x00,0x00,0x00,0x79};
+
+    buffer[0] = 0xFF;
+    buffer[1] = 0x01;
+    buffer[2] = byte2;
+    buffer[3] = byte3;
+    buffer[4] = byte4;
+    buffer[5] = 0;
+    buffer[6] = 0;
+    buffer[7] = 0;
+    buffer[8] = get_crc(buffer);
+}
+
+bool Mhz19b::is_available() {
+    int i = 0;
+    while (stream.available() == 0 && i < SENSOR_RETRY_COUNT) {
+        delay(50);
+        i++;
+    }
+
+    return i != SENSOR_RETRY_COUNT;
+}
+
+void Mhz19b::clear_serial_cache() {
+    stream.flush();
+
+    is_available();
+
+    while (stream.read() > 0);
+}
+
+int Mhz19b::set_span_point_calibration(int level) {
+    CLEAR_LOG();
+    ADD_TO_LOG(String(__PRETTY_FUNCTION__) + " is not implemented");
+    return -1;
+}
+
+int Mhz19b::set_auto_calibrate(bool is_auto_calibrated) {
+    CLEAR_LOG();
+    ADD_TO_LOG(String(__PRETTY_FUNCTION__) + " is not implemented");
+    return -1;
+}
+
+int Mhz19b::set_range(int range) {
+    CLEAR_LOG();
+    ADD_TO_LOG(String(__PRETTY_FUNCTION__) + " is not implemented");
+    return -1;
 }

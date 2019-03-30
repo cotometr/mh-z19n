@@ -8,4 +8,6 @@ include_directories(/usr/share/arduino/libraries/SoftwareSerial)
 include_directories(/usr/share/arduino/hardware/arduino/cores/arduino)
 include_directories(/usr/share/arduino/hardware/arduino/variants/micro)
 set(SOURCE_FILES test/main.cpp mhz19b.cpp mhz19b.h)
+#set(SOURCE_FILES test/main.cpp )
+
 add_executable(mh_z19b ${SOURCE_FILES})
