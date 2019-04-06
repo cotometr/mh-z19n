@@ -10,7 +10,7 @@ class Mhz19b
 {
 public:
 
-    Mhz19b(Stream& stream, bool log = true);
+    Mhz19b(Stream& stream);
 
     /**
      * @brief Request CO2
@@ -72,9 +72,9 @@ private:
 
     Stream& stream;
 
+#ifdef MHZ19B_DEBUG_LOG
     String last_log_str;
-
-    bool is_log_used;
+#endif
 
     enum command : uint8_t
     {

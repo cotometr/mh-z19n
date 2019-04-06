@@ -9,31 +9,26 @@
 
 #ifdef MHZ19B_DEBUG_LOG
 
-#define CLEAR_LOG()                                             \
-do {                                                            \
-    if (this->is_log_used)                                      \
-    {                                                           \
-         this->last_log_str = String(__FUNCTION__)              \
-                              + " is called\n";                 \
-    }                                                           \
+#define CLEAR_LOG()                                         \
+do {                                                        \
+     this->last_log_str = String(__FUNCTION__)              \
+                          + " is called\n";                 \
 }while(0)
 
-#define ADD_TO_LOG(value)                                       \
-do {                                                            \
-    if (this->is_log_used)                                      \
-    {                                                           \
-         this->last_log_str +=                                  \
-                            String(__FUNCTION__) + ":"          \
-                            + __LINE__ + " " + (value) + "\n";  \
-    }                                                           \
+#define ADD_TO_LOG(value)                                   \
+do {                                                        \
+     this->last_log_str +=                                  \
+                        String(__FUNCTION__) + ":"          \
+                        + __LINE__ + " " + (value) + "\n";  \
 }while(0)
+
 #else
 #define CLEAR_LOG()
 #define ADD_TO_LOG(value)
 #endif
 
 
-Mhz19b::Mhz19b(Stream &stream, bool log):stream(stream), is_log_used(log) {
+Mhz19b::Mhz19b(Stream &stream):stream(stream) {
     ADD_TO_LOG("Mhz19b inited!");
 }
 
