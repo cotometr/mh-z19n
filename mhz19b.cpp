@@ -7,33 +7,8 @@
 
 #define SENSOR_RETRY_COUNT (30)
 
-#ifdef MHZ19B_DEBUG_LOG
-
-#define CLEAR_LOG()                                         \
-do {                                                        \
-     this->last_log_str = String(__FUNCTION__)              \
-                          + " is called\n";                 \
-}while(0)
-
-#define ADD_TO_LOG(value)                                   \
-do {                                                        \
-     this->last_log_str +=                                  \
-                        String(__FUNCTION__) + ":"          \
-                        + __LINE__ + " " + (value) + "\n";  \
-}while(0)
-
-#else
-#define CLEAR_LOG()
-#define ADD_TO_LOG(value)
-#endif
-
-
 Mhz19b::Mhz19b(Stream &stream):stream(stream) {
-    ADD_TO_LOG("Mhz19b inited!");
-}
-
-const String &Mhz19b::get_last_log() {
-    return last_log_str;
+    ADD_TO_DEBUG_LOG("Mhz19b inited!");
 }
 
 int Mhz19b::get_co2_uart() {
@@ -55,16 +30,16 @@ int Mhz19b::get_co2_uart() {
     for (int i = 0; i < 9; i++) {
         responce += String((int)buffer[i], HEX) + "   ";
     }
-    ADD_TO_LOG(responce);
+    ADD_TO_DEBUG_LOG(responce);
 #endif
 
     // ppm
     int ppm_uart = 256 * (int)buffer[2] + (int)buffer[3];
-    ADD_TO_LOG("PPM UART: " + String(ppm_uart));
+    ADD_TO_DEBUG_LOG("PPM UART: " + String(ppm_uart));
 
     // temp
     int temp = (unsigned char)buffer[4] - 40;
-    ADD_TO_LOG("Temperature? " + String(temp));
+    ADD_TO_DEBUG_LOG("Temperature? " + String(temp));
 
     return ppm_uart;
 }
@@ -84,7 +59,7 @@ int Mhz19b::set_span_point_calibration(int span_level) {
 
     if(span_level < 1000 || span_level > 5000)
     {
-        ADD_TO_LOG("Invalid span level: " + span_level);
+        ADD_TO_DEBUG_LOG("Invalid span level: " + span_level);
     }
 
     //E.g.: SPAN is 2000ppm，HIGH = 2000 / 256；LOW = 2000 % 256
@@ -100,7 +75,7 @@ int Mhz19b::set_span_point_calibration(int span_level) {
 
 int Mhz19b::set_auto_calibrate(bool is_auto_calibrated) {
     CLEAR_LOG();
-    ADD_TO_LOG("turn to " + (is_auto_calibrated ? String("ON") : String("OFF")));
+    ADD_TO_DEBUG_LOG("turn to " + (is_auto_calibrated ? String("ON") : String("OFF")));
 
     uint8_t byte3 = is_auto_calibrated ? (uint8_t)0xA0 : (uint8_t)0;
 
@@ -116,7 +91,7 @@ int Mhz19b::set_range(int range) {
     CLEAR_LOG();
 
     if (range != 2000 && range != 5000) {
-        ADD_TO_LOG("invalid range = " + String(range));
+        ADD_TO_DEBUG_LOG("invalid range = " + String(range));
         return -1;
     }
 
@@ -150,8 +125,8 @@ int Mhz19b::send_request() {
         clear_serial_cache();
 
         int write_error = stream.getWriteError();
-        ADD_TO_LOG("Could not send the whole request. Only " + String(write_size) +
-                   " has been sent, write error = " + String(write_error));
+        ADD_TO_DEBUG_LOG("Could not send the whole request. Only " + String(write_size) +
+                         " has been sent, write error = " + String(write_error));
         return -1;
     }
 
@@ -166,21 +141,22 @@ int Mhz19b::recv_response()
     if(!is_available())
     {
         clear_serial_cache();
-        ADD_TO_LOG("The sensor doesn't response to receive data");
+        ADD_TO_DEBUG_LOG("The sensor doesn't response to receive data");
         return -1;
     }
 
     if ((response_size = (size_t)stream.available()) != sizeof(buffer)){
         clear_serial_cache();
-        ADD_TO_LOG("Available less memory than needed" +
-                   String(response_size));
+        ADD_TO_DEBUG_LOG("Available less memory than needed" +
+                          String(response_size));
 
         return -1;
     }
 
     response_size = stream.readBytes((char*)buffer, sizeof(buffer));
     if (response_size != sizeof(buffer)) {
-        ADD_TO_LOG("Could not receive the responce. read size = " + String(response_size) + ", error");
+        ADD_TO_DEBUG_LOG("Could not receive the responce. read size = "
+                         + String(response_size) + ", error");
         return -1;
     }
 
@@ -189,9 +165,9 @@ int Mhz19b::recv_response()
 
     if (calculated_crc != received_crc || buffer[0] != 0xff || buffer[1] != recv_command )
     {
-        ADD_TO_LOG("ERROR recv, CRC=" + String(received_crc) +" Should be "
-                   + String(calculated_crc) + ", [0]=" + String((int)buffer[0], HEX) + ", [1]="
-                   + String((int)buffer[1], HEX) );
+        ADD_TO_DEBUG_LOG("ERROR recv, CRC=" + String(received_crc) +" Should be "
+                         + String(calculated_crc) + ", [0]=" + String((int)buffer[0], HEX) + ", [1]="
+                         + String((int)buffer[1], HEX) );
         return -1;
     }
 
@@ -229,4 +205,3 @@ void Mhz19b::clear_serial_cache() {
 
     while (stream.read() > 0);
 }
-

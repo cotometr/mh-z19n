@@ -3,6 +3,7 @@
 class Stream;
 
 #include <WString.h>
+#include "../log/log.h"
 
 #define MHZ19B_DEBUG_LOG
 
@@ -49,7 +50,7 @@ public:
      */
     int set_range(int range);
 
-    const String& get_last_log();
+    GET_DEBUG_LOG();
 private:
 
     uint8_t buffer[9];
@@ -72,9 +73,7 @@ private:
 
     Stream& stream;
 
-#ifdef MHZ19B_DEBUG_LOG
-    String last_log_str;
-#endif
+    CREATE_DEBUG_LOG();
 
     enum command : uint8_t
     {
