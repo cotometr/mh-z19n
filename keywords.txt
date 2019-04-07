@@ -1,6 +1,6 @@
 Mhz19b   KEYWORD1
 get_co2_uart    KEYWORD2
-get_debug_log     KEYWORD3
+get_log_debug     KEYWORD3
 set_zero_point_calibration    KEYWORD4
 set_span_point_calibration    KEYWORD5
 set_auto_calibrate    KEYWORD6

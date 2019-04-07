@@ -2,10 +2,7 @@
 
 class Stream;
 
-#include <WString.h>
 #include "../log/log.h"
-
-#define MHZ19B_DEBUG_LOG
 
 class Mhz19b
 {
@@ -50,7 +47,7 @@ public:
      */
     int set_range(int range);
 
-    GET_DEBUG_LOG();
+    COTOMETR_LOG_GET_DEBUG();
 private:
 
     uint8_t buffer[9];
@@ -73,7 +70,7 @@ private:
 
     Stream& stream;
 
-    CREATE_DEBUG_LOG();
+    COTOMETR_LOG_CREATE_DEBUG();
 
     enum command : uint8_t
     {

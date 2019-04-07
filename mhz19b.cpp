@@ -8,11 +8,11 @@
 #define SENSOR_RETRY_COUNT (30)
 
 Mhz19b::Mhz19b(Stream &stream):stream(stream) {
-    ADD_TO_DEBUG_LOG("Mhz19b inited!");
+    COTOMETR_LOG_ADD_DEBUG("Mhz19b inited!");
 }
 
 int Mhz19b::get_co2_uart() {
-    CLEAR_LOG();
+    COTOMETR_LOG_CLEAR();
 
     set_buffer(COMMAND_READ_CO2);
 
@@ -24,28 +24,28 @@ int Mhz19b::get_co2_uart() {
     if(res != 0)
         return res;
 
-#ifdef MHZ19B_DEBUG_LOG
+#ifdef COTOMETR_DEBUG_LOG
     String responce;
     // print out the response in hexa
     for (int i = 0; i < 9; i++) {
         responce += String((int)buffer[i], HEX) + "   ";
     }
-    ADD_TO_DEBUG_LOG(responce);
+    COTOMETR_LOG_ADD_DEBUG(responce);
 #endif
 
     // ppm
     int ppm_uart = 256 * (int)buffer[2] + (int)buffer[3];
-    ADD_TO_DEBUG_LOG("PPM UART: " + String(ppm_uart));
+    COTOMETR_LOG_ADD_DEBUG("PPM UART: " + String(ppm_uart));
 
     // temp
     int temp = (unsigned char)buffer[4] - 40;
-    ADD_TO_DEBUG_LOG("Temperature? " + String(temp));
+    COTOMETR_LOG_ADD_DEBUG("Temperature? " + String(temp));
 
     return ppm_uart;
 }
 
 int Mhz19b::set_zero_point_calibration() {
-    CLEAR_LOG();
+    COTOMETR_LOG_CLEAR();
 
     set_buffer(COMMAND_CALIBRATE_ZERO);
 
@@ -55,11 +55,11 @@ int Mhz19b::set_zero_point_calibration() {
 }
 //TODO: add check FF
 int Mhz19b::set_span_point_calibration(int span_level) {
-    CLEAR_LOG();
+    COTOMETR_LOG_CLEAR();
 
     if(span_level < 1000 || span_level > 5000)
     {
-        ADD_TO_DEBUG_LOG("Invalid span level: " + span_level);
+        COTOMETR_LOG_ADD_DEBUG("Invalid span level: " + span_level);
     }
 
     //E.g.: SPAN is 2000ppm，HIGH = 2000 / 256；LOW = 2000 % 256
@@ -74,8 +74,8 @@ int Mhz19b::set_span_point_calibration(int span_level) {
 }
 
 int Mhz19b::set_auto_calibrate(bool is_auto_calibrated) {
-    CLEAR_LOG();
-    ADD_TO_DEBUG_LOG("turn to " + (is_auto_calibrated ? String("ON") : String("OFF")));
+    COTOMETR_LOG_CLEAR();
+    COTOMETR_LOG_ADD_DEBUG("turn to " + (is_auto_calibrated ? String("ON") : String("OFF")));
 
     uint8_t byte3 = is_auto_calibrated ? (uint8_t)0xA0 : (uint8_t)0;
 
@@ -88,10 +88,10 @@ int Mhz19b::set_auto_calibrate(bool is_auto_calibrated) {
 }
 
 int Mhz19b::set_range(int range) {
-    CLEAR_LOG();
+    COTOMETR_LOG_CLEAR();
 
     if (range != 2000 && range != 5000) {
-        ADD_TO_DEBUG_LOG("invalid range = " + String(range));
+        COTOMETR_LOG_ADD_DEBUG("invalid range = " + String(range));
         return -1;
     }
 
@@ -125,7 +125,7 @@ int Mhz19b::send_request() {
         clear_serial_cache();
 
         int write_error = stream.getWriteError();
-        ADD_TO_DEBUG_LOG("Could not send the whole request. Only " + String(write_size) +
+        COTOMETR_LOG_ADD_DEBUG("Could not send the whole request. Only " + String(write_size) +
                          " has been sent, write error = " + String(write_error));
         return -1;
     }
@@ -141,13 +141,13 @@ int Mhz19b::recv_response()
     if(!is_available())
     {
         clear_serial_cache();
-        ADD_TO_DEBUG_LOG("The sensor doesn't response to receive data");
+        COTOMETR_LOG_ADD_DEBUG("The sensor doesn't response to receive data");
         return -1;
     }
 
     if ((response_size = (size_t)stream.available()) != sizeof(buffer)){
         clear_serial_cache();
-        ADD_TO_DEBUG_LOG("Available less memory than needed" +
+        COTOMETR_LOG_ADD_DEBUG("Available less memory than needed" +
                           String(response_size));
 
         return -1;
@@ -155,7 +155,7 @@ int Mhz19b::recv_response()
 
     response_size = stream.readBytes((char*)buffer, sizeof(buffer));
     if (response_size != sizeof(buffer)) {
-        ADD_TO_DEBUG_LOG("Could not receive the responce. read size = "
+        COTOMETR_LOG_ADD_DEBUG("Could not receive the responce. read size = "
                          + String(response_size) + ", error");
         return -1;
     }
@@ -165,7 +165,7 @@ int Mhz19b::recv_response()
 
     if (calculated_crc != received_crc || buffer[0] != 0xff || buffer[1] != recv_command )
     {
-        ADD_TO_DEBUG_LOG("ERROR recv, CRC=" + String(received_crc) +" Should be "
+        COTOMETR_LOG_ADD_DEBUG("ERROR recv, CRC=" + String(received_crc) +" Should be "
                          + String(calculated_crc) + ", [0]=" + String((int)buffer[0], HEX) + ", [1]="
                          + String((int)buffer[1], HEX) );
         return -1;
